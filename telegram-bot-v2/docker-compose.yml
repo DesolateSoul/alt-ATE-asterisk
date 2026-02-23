@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build: .
+    container_name: asterisk-telegram-bot
+    restart: unless-stopped
+    environment:
+      # Подключение к PostgreSQL
+      DB_HOST: localhost  # Замените на IP вашего сервера с PostgreSQL
+      DB_PORT: 5432
+      DB_NAME: asterisk_db
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      
+      # Токен Telegram бота
+      BOT_TOKEN: ${BOT_TOKEN}
+      
+      # ID администраторов (через запятую, можно несколько)
+      ADMIN_IDS: ${ADMIN_IDS}
+      
+      # Настройки логирования
+      LOG_LEVEL: INFO
+      
+      # Настройки notifier
+      NOTIFIER_INTERVAL: 5
+      NEW_RECORD_THRESHOLD: 30
+      
+      # Таймауты БД
+      DB_TIMEOUT: 5
+    volumes:
+      # Монтируем директорию для логов
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Используем сеть хоста для простоты подключения к PostgreSQL на хосте
+    network_mode: "host"

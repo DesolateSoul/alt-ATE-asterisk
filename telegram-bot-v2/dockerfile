@@ -1,0 +1,34 @@
+# Dockerfile
+FROM python:3.11-slim
+
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Отключаем буферизацию вывода
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Создаем рабочую директорию
+WORKDIR /app
+
+# Копируем файл с зависимостями
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем все файлы
+COPY bot.py .
+COPY notifier.py .
+COPY start.sh .
+
+# Делаем скрипт запуска исполняемым
+RUN chmod +x start.sh
+
+# Создаем пользователя
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Запускаем скрипт
+CMD ["./start.sh"]
