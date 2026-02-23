@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build: .
+    container_name: telegram_problem_bot
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DB_NAME=asterisk_db
+      - DB_USER=asterisk_user
+      - DB_PASSWORD=qwerty
+      - DB_HOST=host.docker.internal  # Для доступа к хосту из Docker
+      - DB_PORT=5432
+      - DB_TIMEOUT=5
+    restart: unless-stopped
+    networks:
+      - bot_network
+    volumes:
+      - ./logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Для Linux
+
+networks:
+  bot_network:
+    driver: bridge

@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+# Установка системных зависимостей для PostgreSQL
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создание рабочей директории
+WORKDIR /app
+
+# Копирование файла с зависимостями
+COPY requirements.txt .
+
+# Установка Python зависимостей
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копирование кода бота
+COPY bot.py .
+
+# Создание непривилегированного пользователя для безопасности
+RUN useradd -m -u 1000 botuser && chown -R botuser:botuser /app
+USER botuser
+
+# Запуск бота
+CMD ["python", "bot.py"]
