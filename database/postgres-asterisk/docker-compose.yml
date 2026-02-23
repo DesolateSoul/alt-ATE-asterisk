@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres-asterisk-v3
+    restart: unless-stopped
+    environment:
+      # Основные настройки PostgreSQL
+      POSTGRES_DB: asterisk_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-StrongPostgresPassword123!}
+      
+      # Дополнительные настройки
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=ru_RU.UTF-8"
+      TZ: "Asia/Novokuznetsk"
+      
+      # Настройки оптимизации для небольших серверов
+      POSTGRES_CONFIG: |
+        shared_buffers=256MB
+        effective_cache_size=768MB
+        maintenance_work_mem=64MB
+        checkpoint_completion_target=0.7
+        wal_buffers=16MB
+        default_statistics_target=100
+    volumes:
+      # Монтирование скриптов инициализации
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      # Постоянное хранилище данных
+      - ./data:/var/lib/postgresql/data
+      # Директория для бэкапов
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - asterisk-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d asterisk_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  asterisk-network:
+    name: asterisk-network
+    driver: bridge
