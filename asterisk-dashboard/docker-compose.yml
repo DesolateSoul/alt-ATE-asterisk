@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build: .
+    container_name: asterisk-dashboard
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn --bind 0.0.0.0:8000 asterisk_dashboard.wsgi:application"
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+    ports:
+      - "8001:8000"  # Используем порт 8001, чтобы не конфликтовать
+    environment:
+      - DB_NAME=asterisk_db  # Измените на название вашей БД
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}  # Берем из переменной окружения или файла .env
+      - DB_HOST=postgres-asterisk-v3
+      - DB_PORT=5432
+    networks:
+      - asterisk-network  # Исправлено: дефис вместо подчеркивания
+    restart: unless-stopped
+
+volumes:
+  static_volume:
+
+networks:
+  asterisk-network:
+    external: true
+    name: asterisk-network  # Точное имя сети из docker network ls

@@ -1,0 +1,135 @@
+{% extends "verification_system/base_dashboard.html" %}
+
+{% block header %}Логи звонков{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Фильтры</h3>
+        <div class="card-tools">
+            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                <i class="fas fa-minus"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="get" class="form-inline">
+            <div class="form-group mr-2">
+                <label for="caller" class="mr-2">Номер:</label>
+                <input type="text" class="form-control" id="caller" name="caller" 
+                       value="{{ current_filters.caller }}" placeholder="7495...">
+            </div>
+            
+            <div class="form-group mr-2">
+                <label for="success" class="mr-2">Статус:</label>
+                <select class="form-control" id="success" name="success">
+                    <option value="">Все</option>
+                    <option value="true" {% if current_filters.success == 'true' %}selected{% endif %}>Успешные</option>
+                    <option value="false" {% if current_filters.success == 'false' %}selected{% endif %}>Неуспешные</option>
+                </select>
+            </div>
+            
+            <div class="form-group mr-2">
+                <label for="days" class="mr-2">Период:</label>
+                <select class="form-control" id="days" name="days">
+                    <option value="">Все время</option>
+                    <option value="1" {% if current_filters.days == '1' %}selected{% endif %}>Сегодня</option>
+                    <option value="7" {% if current_filters.days == '7' %}selected{% endif %}>Неделя</option>
+                    <option value="30" {% if current_filters.days == '30' %}selected{% endif %}>Месяц</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Применить</button>
+            <a href="{% url 'logs_list' %}" class="btn btn-default ml-2">Сбросить</a>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Всего записей: {{ page_obj.paginator.count }}</h3>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Время</th>
+                    <th>Номер</th>
+                    <th>ИНН</th>
+                    <th>Клиент</th>
+                    <th>Кодовое слово</th>
+                    <th>Статус</th>
+                    <th>Проблема</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.id }}</td>
+                    <td>{{ log.created_at|date:"d.m.Y H:i:s" }}</td>
+                    <td>{{ log.caller_number|default:"—" }}</td>
+                    <td>{{ log.spoken_inn|default:"—" }}</td>
+                    <td>
+                        {% if log.matched_client %}
+                            <a href="{% url 'client_detail' log.matched_client.id %}">
+                                {{ log.matched_client.company_name }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">Не найден</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.spoken_codeword|default:"—" }}</td>
+                    <td>
+                        {% if log.success %}
+                            <span class="badge badge-success">Успешно</span>
+                        {% else %}
+                            <span class="badge badge-danger">Ошибка</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.problem_text %}
+                            <span title="{{ log.problem_text }}">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">Нет записей</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="card-footer clearfix">
+        <ul class="pagination pagination-sm m-0 float-right">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if current_filters.caller %}&caller={{ current_filters.caller }}{% endif %}{% if current_filters.success %}&success={{ current_filters.success }}{% endif %}{% if current_filters.days %}&days={{ current_filters.days }}{% endif %}">&laquo;</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_filters.caller %}&caller={{ current_filters.caller }}{% endif %}{% if current_filters.success %}&success={{ current_filters.success }}{% endif %}{% if current_filters.days %}&days={{ current_filters.days }}{% endif %}">{{ page_obj.previous_page_number }}</a>
+            </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_filters.caller %}&caller={{ current_filters.caller }}{% endif %}{% if current_filters.success %}&success={{ current_filters.success }}{% endif %}{% if current_filters.days %}&days={{ current_filters.days }}{% endif %}">{{ page_obj.next_page_number }}</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if current_filters.caller %}&caller={{ current_filters.caller }}{% endif %}{% if current_filters.success %}&success={{ current_filters.success }}{% endif %}{% if current_filters.days %}&days={{ current_filters.days }}{% endif %}">&raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

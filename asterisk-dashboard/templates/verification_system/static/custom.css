@@ -1,0 +1,30 @@
+/* static/css/custom.css */
+.badge-telegram {
+    background-color: #26A5E4 !important;
+    color: white !important;
+    padding: 5px 10px !important;
+}
+
+.badge-success-custom {
+    background-color: #28a745 !important;
+    color: white !important;
+    padding: 5px 10px !important;
+}
+
+.badge-danger-custom {
+    background-color: #dc3545 !important;
+    color: white !important;
+    padding: 5px 10px !important;
+}
+
+.badge-warning-custom {
+    background-color: #ffc107 !important;
+    color: black !important;
+    padding: 5px 10px !important;
+}
+
+.badge-secondary-custom {
+    background-color: #6c757d !important;
+    color: white !important;
+    padding: 5px 10px !important;
+}

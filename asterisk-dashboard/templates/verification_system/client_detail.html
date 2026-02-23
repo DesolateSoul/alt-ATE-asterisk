@@ -1,0 +1,190 @@
+{% extends "verification_system/base_dashboard.html" %}
+
+{% block header %}{{ client.company_name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Информация о клиенте</h3>
+                <div class="card-tools">
+                    <a href="{% url 'client_update' client.id %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-edit"></i> Редактировать
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <th style="width: 40%">ID:</th>
+                        <td>{{ client.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>ИНН:</th>
+                        <td>{{ client.inn }}</td>
+                    </tr>
+                    <tr>
+                        <th>Кодовое слово:</th>
+                        <td>{{ client.code_word }}</td>
+                    </tr>
+                    <tr>
+                        <th>Телефон:</th>
+                        <td>{{ client.phone_number|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Telegram:</th>
+                        <td>
+                            {% if client.telegram_chat_id %}
+                                <span class="badge" style="background-color: #26A5E4; color: white; padding: 5px 10px;">
+                                    <i class="fab fa-telegram"></i> {{ client.telegram_chat_id }}
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background-color: #6c757d; color: white; padding: 5px 10px;">
+                                    Не привязан
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Статус:</th>
+                        <td>
+                            {% if client.active %}
+                                <span class="badge" style="background-color: #28a745; color: white; padding: 5px 10px;">
+                                    <i class="fas fa-check-circle"></i> Активен
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background-color: #dc3545; color: white; padding: 5px 10px;">
+                                    <i class="fas fa-times-circle"></i> Неактивен
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Создан:</th>
+                        <td>{{ client.created_at|date:"d.m.Y H:i:s" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Обновлен:</th>
+                        <td>{{ client.updated_at|date:"d.m.Y H:i:s" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Статистика</h3>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tr>
+                        <th>Всего звонков:</th>
+                        <td>{{ stats.total_calls }}</td>
+                    </tr>
+                    <tr>
+                        <th>Успешных:</th>
+                        <td>{{ stats.success_calls }}</td>
+                    </tr>
+                    <tr>
+                        <th>Процент успеха:</th>
+                        <td>
+                            <span class="badge" style="background-color: {% if stats.success_rate > 80 %}#28a745{% elif stats.success_rate > 50 %}#ffc107{% else %}#dc3545{% endif %}; color: white; padding: 5px 10px;">
+                                {{ stats.success_rate|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Последние звонки</h3>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Номер</th>
+                            <th>ИНН</th>
+                            <th>Кодовое слово</th>
+                            <th>Результат</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.created_at|date:"d.m.Y H:i:s" }}</td>
+                            <td>{{ log.caller_number|default:"—" }}</td>
+                            <td>{{ log.spoken_inn|default:"—" }}</td>
+                            <td>{{ log.spoken_codeword|default:"—" }}</td>
+                            <td>
+                                {% if log.success %}
+                                    <span class="badge" style="background-color: #28a745; color: white; padding: 5px 10px;">
+                                        Успешно
+                                    </span>
+                                {% else %}
+                                    <span class="badge" style="background-color: #dc3545; color: white; padding: 5px 10px;">
+                                        Ошибка
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Нет звонков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Привязки Telegram групп</h3>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Chat ID</th>
+                            <th>Название группы</th>
+                            <th>Дата привязки</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for binding in bindings %}
+                        <tr>
+                            <td>{{ binding.chat_id }}</td>
+                            <td>{{ binding.chat_title|default:"—" }}</td>
+                            <td>{{ binding.bound_at|date:"d.m.Y H:i:s" }}</td>
+                            <td>
+                                {% if binding.active %}
+                                    <span class="badge" style="background-color: #28a745; color: white; padding: 5px 10px;">
+                                        Активна
+                                    </span>
+                                {% else %}
+                                    <span class="badge" style="background-color: #dc3545; color: white; padding: 5px 10px;">
+                                        Неактивна
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Нет привязок</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

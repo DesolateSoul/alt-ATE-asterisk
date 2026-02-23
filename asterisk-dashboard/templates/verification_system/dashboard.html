@@ -1,0 +1,217 @@
+{% extends "verification_system/base_dashboard.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Инфо-карточки -->
+    <div class="row">
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ total_clients }}</h3>
+                    <p>Всего клиентов</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <a href="{% url 'clients_list' %}" class="small-box-footer">
+                    Подробнее <i class="fas fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ calls_today }}</h3>
+                    <p>Звонков сегодня</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-phone"></i>
+                </div>
+                <a href="{% url 'logs_list' %}?days=1" class="small-box-footer">
+                    Подробнее <i class="fas fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ success_today }}</h3>
+                    <p>Успешных сегодня</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <a href="{% url 'logs_list' %}?days=1&success=true" class="small-box-footer">
+                    Подробнее <i class="fas fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-danger">
+                <div class="inner">
+                    <h3>{{ success_rate|floatformat:1 }}%</h3>
+                    <p>% успешных</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <a href="#" class="small-box-footer">
+                    <i class="fas fa-chart-bar"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Графики и статистика -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Звонки по дням (неделя)</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="callsChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Топ клиентов</h3>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Компания</th>
+                                <th>Звонков</th>
+                                <th>Успешно</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for client in top_clients %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'client_detail' client.id %}">
+                                        {{ client.company_name }}
+                                    </a>
+                                </td>
+                                <td>{{ client.total_calls }}</td>
+                                <td>
+                                    <span class="badge badge-success">{{ client.success_rate }}%</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">Нет данных</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние звонки -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Последние звонки</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'logs_list' %}" class="btn btn-sm btn-primary">
+                            Все звонки <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Номер</th>
+                                <th>ИНН</th>
+                                <th>Клиент</th>
+                                <th>Кодовое слово</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for call in recent_calls %}
+                            <tr>
+                                <td>{{ call.created_at|date:"d.m.Y H:i:s" }}</td>
+                                <td>{{ call.caller_number|default:"—" }}</td>
+                                <td>{{ call.spoken_inn|default:"—" }}</td>
+                                <td>
+                                    {% if call.matched_client %}
+                                        <a href="{% url 'client_detail' call.matched_client.id %}">
+                                            {{ call.matched_client.company_name }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">Не найден</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ call.spoken_codeword|default:"—" }}</td>
+                                <td>
+                                    {% if call.success %}
+                                        <span class="badge badge-success">Успешно</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">
+                                            {% if call.problem_text %}Ошибка{% else %}Неуспешно{% endif %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">Нет звонков</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(function () {
+    // Данные для графика (передаем из Django)
+    const days = {{ chart_days|safe }};
+    const calls = {{ chart_calls|safe }};
+    
+    const ctx = document.getElementById('callsChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Звонки',
+                data: calls,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stepSize: 1
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

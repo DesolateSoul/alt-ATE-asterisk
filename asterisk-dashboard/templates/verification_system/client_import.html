@@ -1,0 +1,57 @@
+{% extends "verification_system/base_dashboard.html" %}
+
+{% block header %}Импорт клиентов из CSV{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card card-success">
+            <div class="card-header">
+                <h3 class="card-title">Загрузите CSV файл</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5><i class="icon fas fa-info"></i> Формат файла</h5>
+                        <p>CSV файл с заголовком и колонками:</p>
+                        <ol>
+                            <li><strong>ИНН</strong> (обязательно, 10 или 12 цифр)</li>
+                            <li><strong>Название компании</strong> (обязательно)</li>
+                            <li><strong>Кодовое слово</strong> (обязательно)</li>
+                            <li><strong>Телефон</strong> (опционально)</li>
+                        </ol>
+                        <p>Пример:</p>
+                        <pre>ИНН,Название,Кодовое слово,Телефон
+7701234567,ООО "Ромашка",секрет123,+74951234567
+771234567890,ИП Иванов,пароль456,</pre>
+                    </div>
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.csv_file.id_for_label }}">{{ form.csv_file.label }}</label>
+                        {{ form.csv_file }}
+                        {% if form.csv_file.help_text %}
+                        <small class="form-text text-muted">{{ form.csv_file.help_text }}</small>
+                        {% endif %}
+                        {% if form.csv_file.errors %}
+                        <div class="text-danger">
+                            {{ form.csv_file.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-success">Загрузить и импортировать</button>
+                    <a href="{% url 'clients_list' %}" class="btn btn-default">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
