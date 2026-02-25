@@ -1,77 +1,213 @@
--- init.sql — структура базы данных версии 2 (февраль 2026)
--- Используется для PostgreSQL 17 в контейнере postgres-asterisk-v2
-
--- Таблица клиентов (справочник заказчиков)
-CREATE TABLE IF NOT EXISTS clients (
-    id                BIGSERIAL PRIMARY KEY,
-    inn               BIGINT UNIQUE NOT NULL,
-    company_name      VARCHAR(255) NOT NULL,
-    code_word         VARCHAR(100) NOT NULL,
-    phone_number      VARCHAR(30),
-    telegram_chat_id  BIGINT,
-    active            BOOLEAN DEFAULT true,
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица логов верификации и проблем
-CREATE TABLE IF NOT EXISTS verification_logs (
-    id                  BIGSERIAL PRIMARY KEY,
-    call_uniqueid       VARCHAR(150) NOT NULL,
-    caller_number       VARCHAR(40),
-    spoken_inn          BIGINT,
-    matched_client_id   BIGINT REFERENCES clients(id) ON DELETE SET NULL,
-    spoken_codeword     VARCHAR(100),
-    success             BOOLEAN DEFAULT false,
-    problem_text        TEXT,
-    problem_recognized_at TIMESTAMP,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Индексы
-CREATE INDEX IF NOT EXISTS idx_verif_caller ON verification_logs (caller_number);
-CREATE INDEX IF NOT EXISTS idx_verif_client ON verification_logs (matched_client_id);
-CREATE INDEX IF NOT EXISTS idx_verif_time ON verification_logs (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_verif_success ON verification_logs (success);
-
--- Функция для автоматического обновления updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+-- Создание функции для автоматического обновления updated_at
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
--- Триггер для автоматического обновления updated_at в clients
-DROP TRIGGER IF EXISTS update_clients_updated_at ON clients;
+-- Создание таблицы clients
+CREATE TABLE IF NOT EXISTS public.clients (
+    id BIGSERIAL PRIMARY KEY,
+    inn BIGINT NOT NULL UNIQUE,
+    company_name VARCHAR(255) NOT NULL,
+    code_word VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(30),
+    telegram_chat_id BIGINT,
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Триггер для clients
+DROP TRIGGER IF EXISTS update_clients_updated_at ON public.clients;
 CREATE TRIGGER update_clients_updated_at
-    BEFORE UPDATE ON clients
+    BEFORE UPDATE ON public.clients
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION public.update_updated_at_column();
 
--- Пример начальных данных
-INSERT INTO clients (inn, company_name, code_word, phone_number)
-VALUES 
-    (4205128383, 'Альт-Компьютерс', 'альт', '+7 (3842) 57-11-11'),
-    (4207017537, 'КемГУ', 'корпус', '+7 (3842) 58-12-39'),
-    (4205242442, 'СДЭК-Кемерово', 'синий', '+7 (3842) 77-88-99')
-ON CONFLICT (inn) DO NOTHING;
+-- Создание таблицы verification_logs
+CREATE TABLE IF NOT EXISTS public.verification_logs (
+    id BIGSERIAL PRIMARY KEY,
+    call_uniqueid VARCHAR(150) NOT NULL,
+    caller_number VARCHAR(40),
+    spoken_inn BIGINT,
+    matched_client_id BIGINT REFERENCES public.clients(id) ON DELETE SET NULL,
+    spoken_codeword VARCHAR(100),
+    success BOOLEAN DEFAULT false,
+    problem_text TEXT,
+    problem_recognized_at TIMESTAMP WITHOUT TIME ZONE,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    problem_audio_path TEXT
+);
 
--- Создание пользователя для приложения (опционально)
-DO
-$do$
+-- Комментарий к колонке
+COMMENT ON COLUMN public.verification_logs.problem_audio_path IS 'Путь к аудиофайлу с описанием проблемы';
+
+-- Создание таблицы telegram_group_bindings
+CREATE TABLE IF NOT EXISTS public.telegram_group_bindings (
+    id BIGSERIAL PRIMARY KEY,
+    chat_id BIGINT NOT NULL,
+    chat_title VARCHAR(255),
+    client_id BIGINT NOT NULL,
+    client_inn BIGINT NOT NULL,
+    company_name VARCHAR(255),
+    bound_by BIGINT,
+    bound_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT true,
+    CONSTRAINT telegram_group_bindings_chat_id_client_id_key UNIQUE (chat_id, client_id)
+);
+
+-- Создание индексов для telegram_group_bindings
+CREATE INDEX IF NOT EXISTS idx_bindings_active ON public.telegram_group_bindings(active);
+CREATE INDEX IF NOT EXISTS idx_bindings_chat ON public.telegram_group_bindings(chat_id);
+CREATE INDEX IF NOT EXISTS idx_bindings_client ON public.telegram_group_bindings(client_id);
+CREATE INDEX IF NOT EXISTS idx_bindings_inn ON public.telegram_group_bindings(client_inn);
+
+-- Создание индексов для verification_logs
+CREATE INDEX IF NOT EXISTS idx_verif_caller ON public.verification_logs(caller_number);
+CREATE INDEX IF NOT EXISTS idx_verif_client ON public.verification_logs(matched_client_id);
+CREATE INDEX IF NOT EXISTS idx_verif_success ON public.verification_logs(success);
+CREATE INDEX IF NOT EXISTS idx_verif_time ON public.verification_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_verif_problem_audio_path ON public.verification_logs(problem_audio_path) 
+    WHERE problem_audio_path IS NOT NULL;
+
+-- Таблицы Django (если нужны для админки)
+-- auth_group
+CREATE TABLE IF NOT EXISTS public.auth_group (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE
+);
+
+CREATE INDEX IF NOT EXISTS auth_group_name_a6ea08ec_like ON public.auth_group(name varchar_pattern_ops);
+
+-- auth_permission
+CREATE TABLE IF NOT EXISTS public.auth_permission (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    content_type_id INTEGER NOT NULL,
+    codename VARCHAR(100) NOT NULL,
+    CONSTRAINT auth_permission_content_type_id_codename_01ab375a_uniq UNIQUE (content_type_id, codename)
+);
+
+-- auth_user
+CREATE TABLE IF NOT EXISTS public.auth_user (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    password VARCHAR(128) NOT NULL,
+    last_login TIMESTAMP WITH TIME ZONE,
+    is_superuser BOOLEAN NOT NULL,
+    username VARCHAR(150) NOT NULL UNIQUE,
+    first_name VARCHAR(150) NOT NULL,
+    last_name VARCHAR(150) NOT NULL,
+    email VARCHAR(254) NOT NULL,
+    is_staff BOOLEAN NOT NULL,
+    is_active BOOLEAN NOT NULL,
+    date_joined TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS auth_user_username_6821ab7c_like ON public.auth_user(username varchar_pattern_ops);
+
+-- auth_group_permissions
+CREATE TABLE IF NOT EXISTS public.auth_group_permissions (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    group_id INTEGER NOT NULL REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED,
+    permission_id INTEGER NOT NULL REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT auth_group_permissions_group_id_permission_id_0cd325b0_uniq UNIQUE (group_id, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS auth_group_permissions_group_id_b120cbf9 ON public.auth_group_permissions(group_id);
+CREATE INDEX IF NOT EXISTS auth_group_permissions_permission_id_84c5c92e ON public.auth_group_permissions(permission_id);
+
+-- auth_user_groups
+CREATE TABLE IF NOT EXISTS public.auth_user_groups (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED,
+    group_id INTEGER NOT NULL REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT auth_user_groups_user_id_group_id_94350c0c_uniq UNIQUE (user_id, group_id)
+);
+
+CREATE INDEX IF NOT EXISTS auth_user_groups_group_id_97559544 ON public.auth_user_groups(group_id);
+CREATE INDEX IF NOT EXISTS auth_user_groups_user_id_6a12ed8b ON public.auth_user_groups(user_id);
+
+-- auth_user_user_permissions
+CREATE TABLE IF NOT EXISTS public.auth_user_user_permissions (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED,
+    permission_id INTEGER NOT NULL REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT auth_user_user_permissions_user_id_permission_id_14a6b632_uniq UNIQUE (user_id, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS auth_user_user_permissions_permission_id_1fbb5f2c ON public.auth_user_user_permissions(permission_id);
+CREATE INDEX IF NOT EXISTS auth_user_user_permissions_user_id_a95ead1b ON public.auth_user_user_permissions(user_id);
+
+-- django_content_type
+CREATE TABLE IF NOT EXISTS public.django_content_type (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    app_label VARCHAR(100) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    CONSTRAINT django_content_type_app_label_model_76bd3d3b_uniq UNIQUE (app_label, model)
+);
+
+-- Добавляем внешний ключ для auth_permission после создания django_content_type
+ALTER TABLE public.auth_permission 
+    ADD CONSTRAINT auth_permission_content_type_id_2f476e4b_fk_django_co 
+    FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
+
+CREATE INDEX IF NOT EXISTS auth_permission_content_type_id_2f476e4b ON public.auth_permission(content_type_id);
+
+-- django_admin_log
+CREATE TABLE IF NOT EXISTS public.django_admin_log (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    action_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    object_id TEXT,
+    object_repr VARCHAR(200) NOT NULL,
+    action_flag SMALLINT NOT NULL CHECK (action_flag >= 0),
+    change_message TEXT NOT NULL,
+    content_type_id INTEGER REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED,
+    user_id INTEGER NOT NULL REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS django_admin_log_content_type_id_c4bce8eb ON public.django_admin_log(content_type_id);
+CREATE INDEX IF NOT EXISTS django_admin_log_user_id_c564eba6 ON public.django_admin_log(user_id);
+
+-- django_migrations
+CREATE TABLE IF NOT EXISTS public.django_migrations (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    app VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    applied TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+-- django_session
+CREATE TABLE IF NOT EXISTS public.django_session (
+    session_key VARCHAR(40) NOT NULL PRIMARY KEY,
+    session_data TEXT NOT NULL,
+    expire_date TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS django_session_expire_date_a5c62663 ON public.django_session(expire_date);
+CREATE INDEX IF NOT EXISTS django_session_session_key_c0390e0f_like ON public.django_session(session_key varchar_pattern_ops);
+
+-- Настройка прав доступа
+-- Создание пользователя (если не существует)
+DO $$
 BEGIN
-   IF NOT EXISTS (
-      SELECT FROM pg_catalog.pg_roles
-      WHERE  rolname = 'asterisk_app') THEN
-      CREATE USER asterisk_app WITH PASSWORD 'secure_password_change_me';
-   END IF;
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'asterisk_app') THEN
+        CREATE ROLE asterisk_app;
+    END IF;
 END
-$do$;
+$$;
 
--- Grant privileges
-GRANT CONNECT ON DATABASE asterisk_db TO asterisk_app;
+-- Права на схему public
 GRANT USAGE ON SCHEMA public TO asterisk_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO asterisk_app;
+
+-- Права на таблицы
+GRANT SELECT, INSERT, DELETE, UPDATE ON ALL TABLES IN SCHEMA public TO asterisk_app;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO asterisk_app;
+
+-- Права на будущие таблицы
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, DELETE, UPDATE ON TABLES TO asterisk_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO asterisk_app;
