@@ -3,7 +3,7 @@
 
 """
 AGI-скрипт для сохранения описания проблемы клиента
-Сохраняет распознанный текст в поле problem_text таблицы verification_logs
+Сохраняет распознанный текст и путь к аудиозаписи в поле problem_text и problem_audio_path таблицы verification_logs
 Работает с таблицей verification_logs
 """
 
@@ -26,7 +26,7 @@ class ProblemSaver:
     DB_CONFIG = {
         "dbname": "asterisk_db",
         "user": "postgres",  # Изменено с asterisk_user на postgres
-        "password": "qwerty",  # !!! ИЗМЕНИТЕ НА РЕАЛЬНЫЙ ПАРОЛЬ !!!
+        "password": "OP90wq21",  # !!! ИЗМЕНИТЕ НА РЕАЛЬНЫЙ ПАРОЛЬ !!!
         "host": "localhost",
         "port": 5432,
         "connect_timeout": 5,
@@ -41,6 +41,7 @@ class ProblemSaver:
     STATUS_SUCCESS = "SAVED"
     STATUS_NO_INN = "NO_INN"
     STATUS_NO_TEXT = "NO_TEXT"
+    STATUS_NO_AUDIO = "NO_AUDIO"
     STATUS_NO_UNIQUEID = "NO_UNIQUEID"
     STATUS_ERROR = "ERROR"
     STATUS_NOT_FOUND = "NOT_FOUND"
@@ -67,18 +68,19 @@ class ProblemSaver:
             self.agi.verbose(f"❌ Ошибка подключения к БД: {e}", 1)
             return False
 
-    def get_agi_variables(self) -> Tuple[str, str, str, str, str]:
+    def get_agi_variables(self) -> Tuple[str, str, str, str, str, str]:
         """
         Получает необходимые переменные из AGI
 
         Returns:
-            Кортеж (problem_text, uniqueid, inn_str, caller_number, client_id)
+            Кортеж (problem_text, uniqueid, inn_str, caller_number, client_id, audio_path)
         """
         problem_text = self.agi.get_variable("SPEECH_TEXT(0)") or ""
         uniqueid = self.agi.get_variable("UNIQUEID") or ""
         inn_str = self.agi.get_variable("VERIF_INN") or ""
         caller_number = self.agi.get_variable("CALLERID(num)") or ""
         client_id = self.agi.get_variable("VERIF_CLIENT_ID") or ""
+        audio_path = self.agi.get_variable("RECORDING_OGG") or ""
 
         # Для отладки выводим все полученные переменные
         self.agi.verbose(f"Получены переменные:", 3)
@@ -87,8 +89,9 @@ class ProblemSaver:
         self.agi.verbose(f"  inn_str: '{inn_str}'", 3)
         self.agi.verbose(f"  caller_number: '{caller_number}'", 3)
         self.agi.verbose(f"  client_id: '{client_id}'", 3)
+        self.agi.verbose(f"  audio_path: '{audio_path}'", 3)
 
-        return problem_text, uniqueid, inn_str, caller_number, client_id
+        return problem_text, uniqueid, inn_str, caller_number, client_id, audio_path
 
     def find_verification_log(self, uniqueid: str, inn_value: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """
@@ -106,7 +109,8 @@ class ProblemSaver:
                 # Ищем по uniqueid и ИНН
                 self.cursor.execute("""
                     SELECT id, call_uniqueid, caller_number, spoken_inn,
-                           matched_client_id, success, problem_text, problem_recognized_at
+                           matched_client_id, success, problem_text, problem_recognized_at,
+                           problem_audio_path
                     FROM verification_logs
                     WHERE call_uniqueid = %s AND spoken_inn = %s
                     ORDER BY id DESC
@@ -116,7 +120,8 @@ class ProblemSaver:
                 # Ищем только по uniqueid
                 self.cursor.execute("""
                     SELECT id, call_uniqueid, caller_number, spoken_inn,
-                           matched_client_id, success, problem_text, problem_recognized_at
+                           matched_client_id, success, problem_text, problem_recognized_at,
+                           problem_audio_path
                     FROM verification_logs
                     WHERE call_uniqueid = %s
                     ORDER BY id DESC
@@ -133,7 +138,8 @@ class ProblemSaver:
                     'matched_client_id': row[4],
                     'success': row[5],
                     'problem_text': row[6],
-                    'problem_recognized_at': row[7]
+                    'problem_recognized_at': row[7],
+                    'problem_audio_path': row[8]
                 }
             return None
 
@@ -143,9 +149,9 @@ class ProblemSaver:
 
     def save_problem_description(self, problem_text: str, uniqueid: str,
                                 inn_str: str, caller_number: str,
-                                client_id: str) -> bool:
+                                client_id: str, audio_path: str) -> bool:
         """
-        Сохраняет описание проблемы в таблицу verification_logs
+        Сохраняет описание проблемы и путь к аудиофайлу в таблицу verification_logs
 
         Args:
             problem_text: Распознанный текст проблемы
@@ -153,6 +159,7 @@ class ProblemSaver:
             inn_str: Строка с ИНН
             caller_number: Номер звонящего
             client_id: ID клиента (если есть)
+            audio_path: Путь к файлу с записью проблемы
 
         Returns:
             True если запись сохранена, иначе False
@@ -166,6 +173,9 @@ class ProblemSaver:
             if not problem_text:
                 self.agi.verbose("❌ Отсутствует текст проблемы", 1)
                 return False
+
+            if not audio_path:
+                self.agi.verbose("⚠ Отсутствует путь к аудиофайлу, сохраняем только текст", 1)
 
             # Преобразуем ИНН в число, если есть
             inn_value = None
@@ -191,12 +201,13 @@ class ProblemSaver:
                 self.cursor.execute("""
                     UPDATE verification_logs
                     SET problem_text = %s,
+                        problem_audio_path = COALESCE(problem_audio_path, %s),
                         problem_recognized_at = NOW(),
                         caller_number = COALESCE(caller_number, %s),
                         matched_client_id = COALESCE(matched_client_id, %s)
                     WHERE id = %s
                     RETURNING id
-                """, (problem_text, caller_number, client_id_value, existing_log['id']))
+                """, (problem_text, audio_path, caller_number, client_id_value, existing_log['id']))
 
                 action = "обновлена"
                 record_id = existing_log['id']
@@ -207,11 +218,11 @@ class ProblemSaver:
                 self.cursor.execute("""
                     INSERT INTO verification_logs
                         (call_uniqueid, caller_number, spoken_inn,
-                         matched_client_id, problem_text, problem_recognized_at,
-                         success, created_at)
-                    VALUES (%s, %s, %s, %s, %s, NOW(), false, NOW())
+                         matched_client_id, problem_text, problem_audio_path,
+                         problem_recognized_at, success, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW(), false, NOW())
                     RETURNING id
-                """, (uniqueid, caller_number, inn_value, client_id_value, problem_text))
+                """, (uniqueid, caller_number, inn_value, client_id_value, problem_text, audio_path))
 
                 action = "создана"
                 record_id = self.cursor.fetchone()[0]
@@ -223,6 +234,8 @@ class ProblemSaver:
                 # Дополнительная информация для отладки
                 self.agi.verbose(f"  - Текст проблемы: '{problem_text[:50]}...'", 2)
                 self.agi.verbose(f"  - Длина текста: {len(problem_text)} символов", 2)
+                if audio_path:
+                    self.agi.verbose(f"  - Аудиофайл: {audio_path}", 2)
                 if inn_value:
                     self.agi.verbose(f"  - ИНН: {inn_value}", 2)
                 if client_id_value:
@@ -250,7 +263,7 @@ class ProblemSaver:
             self.agi.verbose("=== НАЧАЛО СОХРАНЕНИЯ ПРОБЛЕМЫ ===", 1)
 
             # Получаем переменные из AGI
-            problem_text, uniqueid, inn_str, caller_number, client_id = self.get_agi_variables()
+            problem_text, uniqueid, inn_str, caller_number, client_id, audio_path = self.get_agi_variables()
 
             # Проверяем наличие uniqueid
             if not uniqueid:
@@ -273,6 +286,10 @@ class ProblemSaver:
                 self.agi.verbose(f"🔢 ИНН: {inn_str}", 1)
             if client_id:
                 self.agi.verbose(f"👤 Client ID: {client_id}", 1)
+            if audio_path:
+                self.agi.verbose(f"🎵 Аудиофайл: {audio_path}", 1)
+            else:
+                self.agi.verbose("⚠ Путь к аудиофайлу не указан", 1)
 
             # Подключаемся к БД
             if not self.connect_to_db():
@@ -281,7 +298,7 @@ class ProblemSaver:
                 return
 
             # Сохраняем проблему в БД
-            if self.save_problem_description(problem_text, uniqueid, inn_str, caller_number, client_id):
+            if self.save_problem_description(problem_text, uniqueid, inn_str, caller_number, client_id, audio_path):
                 self.agi.set_variable("PROBLEM_STATUS", self.STATUS_SUCCESS)
                 self.agi.verbose("✅ Проблема успешно сохранена в verification_logs", 1)
             else:
