@@ -8,14 +8,14 @@
 
 Команда для быстрой установки:
 
-``bash
+```bash
 wget -qO- https://github.com/DesolateSoul/alt-ATE-asterisk/archive/refs/heads/main.tar.gz | tar -xzv --strip-components=2 -C /var/lib/asterisk/agi-bin/ alt-ATE-asterisk-main/agi-bin
-``
+```
 
 После копирования файлов задайте правильного владельца и права на исполнение:
 
-``bash
+```bash
 chown -R asterisk:asterisk /var/lib/asterisk/agi-bin/
-/
+
 chmod +x /var/lib/asterisk/agi-bin/*
-``
+```
