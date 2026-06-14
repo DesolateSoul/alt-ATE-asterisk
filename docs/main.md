@@ -38,12 +38,17 @@ sudo make config
 sudo ldconfig
 ```
 
-Запустите Asterisk и проведите первичную проверку подключившись к консоли: 
+Создайте отдельного пользователя и наделите его правами: 
 
 ```bash
 sudo adduser --system --group --no-create-home asterisk
 sudo chown -R asterisk:asterisk /var/{lib,log,spool}/asterisk
 sudo chown -R asterisk:asterisk /etc/asterisk
+```
+
+Запустите Asterisk и проведите первичную проверку подключившись к консоли: 
+
+```bash
 sudo systemctl enable asterisk
 sudo systemctl start asterisk
 sudo systemctl status asterisk
