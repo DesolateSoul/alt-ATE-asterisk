@@ -123,3 +123,37 @@ sudo ./create_asterisk_sounds.sh my_phrases.txt
 ```bash
 sudo apt-get update && sudo apt-get install -y curl ffmpeg
 ```
+
+### 7. Запустите Asterisk Dashboard в Docker
+
+Панель управления (asterisk-dashboard) реализована на базе веб-фреймворка Django и запускается в изолированном Docker-контейнере.
+
+Перед запуском убедитесь, что в вашей системе:
+
+Создана внешняя сеть Docker с именем asterisk-network (в ней должен работать ваш PostgreSQL-сервер). Если сети еще нет, создайте ее:
+
+```bash
+docker network create asterisk-network
+```
+
+Запущен и доступен контейнер с базой данных PostgreSQL под именем postgres-asterisk-v3
+
+Перейдите в директорию с файлами панели управления:
+
+```bash
+cd alt-ATE-asterisk/asterisk-dashboard
+```
+
+Для безопасной передачи пароля от базы данных необходимо создать файл .env.
+
+```bash
+nano .env
+```
+
+Запустите сборку образа и старт контейнера в фоновом режиме:
+
+```bash
+docker compose up -d --build
+```
+
+После успешного запуска панель управления будет доступна в браузере по адресу: http://<IP_адрес_вашего_сервера>:8001
