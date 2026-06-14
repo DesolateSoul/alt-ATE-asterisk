@@ -16,5 +16,6 @@ wget -qO- https://github.com/DesolateSoul/alt-ATE-asterisk/archive/refs/heads/ma
 
 ``bash
 chown -R asterisk:asterisk /var/lib/asterisk/agi-bin/
+
 chmod +x /var/lib/asterisk/agi-bin/*
 ``
