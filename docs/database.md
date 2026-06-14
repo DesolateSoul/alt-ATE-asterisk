@@ -1,6 +1,6 @@
 mkdir -p docs
 cat > docs/database.md << 'EOF'
-# Структура базы данных (версия 2)
+# Структура базы данных
 
 База используется для верификации клиентов по ИНН + кодовому слову, сохранения текста проблемы и отправки уведомлений в Telegram.
 
@@ -34,6 +34,6 @@ cat > docs/database.md << 'EOF'
 | created_at            | TIMESTAMP     | Время создания записи                                                    | Авто         |
 
 ## Как применять init.sql
-
+## Полный путь где находится скрипт: database/postgres-asterisk/init-scripts
 ```bash
 psql -h localhost -p 5433 -U asterisk_user -d asterisk_db_v2 -f init.sql
