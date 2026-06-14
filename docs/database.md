@@ -33,7 +33,7 @@ cat > docs/database.md << 'EOF'
 | problem_recognized_at | TIMESTAMP     | Время распознавания проблемы                                             | Нет          |
 | created_at            | TIMESTAMP     | Время создания записи                                                    | Авто         |
 
-## Полный путь где находится скрипт: database/postgres-asterisk/init-scripts
+## Полный путь где находится скрипт: database/postgres-asterisk/init-scripts/
 ## Как применять init.sql
 ```bash
 psql -h localhost -p 5433 -U asterisk_user -d asterisk_db_v2 -f init.sql
