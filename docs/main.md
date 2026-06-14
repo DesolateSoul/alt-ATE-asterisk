@@ -69,6 +69,71 @@ wget -qO- https://github.com/DesolateSoul/alt-ATE-asterisk/archive/refs/heads/ma
 chown -R asterisk:asterisk /etc/asterisk/
 ```
 
+### 2. Развертывание базы данных в Docker контейнере
+
+Для начала, нужно создать БД на основном сервере посредством скрипта, с помощью команды:
+
+Команда для создания БД:
+
+```
+psql -h localhost -p 5433 -U asterisk_user -d asterisk_db_v2 -f init.sql
+```
+Полный путь где находится скрипт: database/postgres-asterisk/init-scripts/init.sql
+
+Затем необходимо запустить БД с помощью Docker контейнера. Для этого понадобиться docker-compose.yml файл, который расположен в директории: database/postgres-asterisk/docker-compose.yml 
+Исполняемый файл запускаем следующей командой:
+
+```
+cd /home/alt/postgres-asterisk docker compose up -d
+```
+
+### 3. Интеграция Asterisk с сервером распознавания речи Vosk
+Это модуль Asterisk для Vosk API сервера:
+
+https://github.com/alphacep/vosk-server
+
+Модуль протестирован с последней версией Asterisk из мастер-ветки git, но должен одинаково работать и с другими ветками (13, 16, 17).
+
+## Установка
+
+1) Убедитесь, что у вас установлена последняя версия Asterisk
+
+```
+git clone https://github.com/asterisk/asterisk
+....
+```
+
+2) Сначала соберите модули
+
+```
+./bootstrap
+./configure --with-asterisk=<path_to_asterisk_source> --prefix=<path_to_install>
+make
+make install
+```
+3) Создайте speech.conf и вставьте содержимое:
+
+```
+[general]
+url = ws://10.7.35.3:2700
+```
+Этот файл определяет глобальный URL для движка распознавания речи (Speech Engine).
+
+4) Создайте res_speech_vosk.conf и вставьте содержимое:
+
+```
+[general]
+url = ws://10.7.35.3:2700
+```
+Файл конфигурации модуля res_speech_vosk.so, который отвечает за подключение именно к Vosk-серверу по WebSocket.
+
+После внесения изменений выполнена перезагрузка соответствующих модулей и диалплана:
+
+```bash
+asterisk -rx "module reload res_speech_vosk.so"
+asterisk -rx "dialplan reload"
+```
+
 ### 3. Скопируйте содержимое директории agi-bin из репозитория DesolateSoul/alt-ATE-asterisk в локальную папку сервера /var/lib/asterisk/agi-bin/.
 
 Команда для быстрой установки:
