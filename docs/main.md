@@ -96,14 +96,14 @@ https://github.com/alphacep/vosk-server
 
 ## Установка
 
-1) Убедитесь, что у вас установлена последняя версия Asterisk
+Убедитесь, что у вас установлена последняя версия Asterisk
 
 ```
 git clone https://github.com/asterisk/asterisk
 ....
 ```
 
-2) Сначала соберите модули
+Сначала соберите модули
 
 ```
 ./bootstrap
@@ -111,7 +111,7 @@ git clone https://github.com/asterisk/asterisk
 make
 make install
 ```
-3) Создайте speech.conf и вставьте содержимое:
+Создайте speech.conf и вставьте содержимое:
 
 ```
 [general]
@@ -119,7 +119,7 @@ url = ws://10.7.35.3:2700
 ```
 Этот файл определяет глобальный URL для движка распознавания речи (Speech Engine).
 
-4) Создайте res_speech_vosk.conf и вставьте содержимое:
+Создайте res_speech_vosk.conf и вставьте содержимое:
 
 ```
 [general]
