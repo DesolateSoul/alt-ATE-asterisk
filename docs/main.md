@@ -1,6 +1,54 @@
 Для развёртывания интеллектуального модуля для виртуальной АТС, необходимо выполнить следующие шаги:
 
-### 1.
+### 1. Установите Asterisk нужной версии из исходного кода 
+
+Для начала обновите систему и установите базовые пакеты: 
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y build-essential git wget subversion \
+libjansson-dev libxml2-dev uuid-dev libedit-dev \
+libssl-dev curl pkg-config libncurses5-dev
+```
+
+Далее загрузите и распакуйте Asterisk: 
+
+```bash
+cd /usr/src
+sudo wget https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-21-current.tar.gz
+sudo tar xvf asterisk-21-current.tar.gz
+cd asterisk-21.*/
+```
+
+Следующим шагом будет установка зависимостей и выбор модулей: 
+
+```bash
+sudo contrib/scripts/install_prereq install
+sudo ./configure --with-jansson-bundled
+sudo make menuselect
+```
+
+Скомпилируйте и установите Asterisk: 
+
+```bash
+sudo make -j$(nproc)
+sudo make install
+sudo make samples
+sudo make config
+sudo ldconfig
+```
+
+Запустите Asterisk и проведите первичную проверку подключившись к консоли: 
+
+```bash
+sudo adduser --system --group --no-create-home asterisk
+sudo chown -R asterisk:asterisk /var/{lib,log,spool}/asterisk
+sudo chown -R asterisk:asterisk /etc/asterisk
+sudo systemctl enable asterisk
+sudo systemctl start asterisk
+sudo systemctl status asterisk
+sudo asterisk -rvvv
+```
 
 ### 2.
 
