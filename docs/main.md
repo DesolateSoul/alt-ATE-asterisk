@@ -55,7 +55,19 @@ sudo systemctl status asterisk
 sudo asterisk -rvvv
 ```
 
-### 2.
+### 2. Скопируйте содержимое директории config-files из репозитория DesolateSoul/alt-ATE-asterisk в локальную папку сервера /etc/asterisk/.
+
+Команда для быстрой установки: 
+
+```bash
+wget -qO- https://github.com/DesolateSoul/alt-ATE-asterisk/archive/refs/heads/main.tar.gz | tar -xzv --strip-components=2 -C /etc/asterisk/ alt-ATE-asterisk-main/config-files
+```
+
+После копирования файлов задайте правильного владельца:
+
+```bash
+chown -R asterisk:asterisk /etc/asterisk/
+```
 
 ### 3. Скопируйте содержимое директории agi-bin из репозитория DesolateSoul/alt-ATE-asterisk в локальную папку сервера /var/lib/asterisk/agi-bin/.
 
