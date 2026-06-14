@@ -69,7 +69,7 @@ wget -qO- https://github.com/DesolateSoul/alt-ATE-asterisk/archive/refs/heads/ma
 chown -R asterisk:asterisk /etc/asterisk/
 ```
 
-### 2. Развертывание базы данных в Docker контейнере
+### 3. Развертывание базы данных в Docker контейнере
 
 Для начала, нужно создать БД на основном сервере посредством скрипта, с помощью команды:
 
@@ -87,7 +87,7 @@ psql -h localhost -p 5433 -U asterisk_user -d asterisk_db_v2 -f init.sql
 cd /home/alt/postgres-asterisk docker compose up -d
 ```
 
-### 3. Интеграция Asterisk с сервером распознавания речи Vosk
+### 4. Интеграция Asterisk с сервером распознавания речи Vosk
 Это модуль Asterisk для Vosk API сервера:
 
 https://github.com/alphacep/vosk-server
@@ -134,7 +134,7 @@ asterisk -rx "module reload res_speech_vosk.so"
 asterisk -rx "dialplan reload"
 ```
 
-### 3. Скопируйте содержимое директории agi-bin из репозитория DesolateSoul/alt-ATE-asterisk в локальную папку сервера /var/lib/asterisk/agi-bin/.
+### 5. Скопируйте содержимое директории agi-bin из репозитория DesolateSoul/alt-ATE-asterisk в локальную папку сервера /var/lib/asterisk/agi-bin/.
 
 Команда для быстрой установки:
 
@@ -150,7 +150,7 @@ chown -R asterisk:asterisk /var/lib/asterisk/agi-bin/
 chmod +x /var/lib/asterisk/agi-bin/*
 ```
 
-### 4. Запустите Telegram бота в docker контейнере.
+### 6. Запустите Telegram бота в docker контейнере.
 
 Все исходные файлы бота находятся в репозитории в папке telegram-bot-v2. Для сборки и запуска контейнера выполните следующие шаги:
 
@@ -174,7 +174,7 @@ nano .env
 docker-compose up -d --build
 ```
 
-### 5. Запустите Piper-tts
+### 7. Запустите Piper-tts
 
 Установите необходимые зависимости:
 
@@ -197,7 +197,7 @@ python3 -m piper.http_server -m ru_RU-ruslan-medium
 Это запустит HTTP-сервер на порту 5000 (для изменения настроек используйте `--host` и `--port`).
 Если голоса находятся в другой директории, используйте `--data-dir <DIR>`
 
-### 6. Запустите автоматическую генерацию голосовых файлов для Asterisk
+### 8. Запустите автоматическую генерацию голосовых файлов для Asterisk
 
 Скрипт create_asterisk_sounds.sh позволяет автоматически генерировать аудиофайлы через TTS-сервер (Text-to-Speech) и сразу конвертировать их в правильный формат для Asterisk (PCM, 16bit, 8000Hz, mono).
 
@@ -254,7 +254,7 @@ sudo ./create_asterisk_sounds.sh my_phrases.txt
 sudo apt-get update && sudo apt-get install -y curl ffmpeg
 ```
 
-### 7. Запустите Asterisk Dashboard в Docker
+### 9. Запустите Asterisk Dashboard в Docker
 
 Панель управления (asterisk-dashboard) реализована на базе веб-фреймворка Django и запускается в изолированном Docker-контейнере.
 
