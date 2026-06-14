@@ -55,13 +55,13 @@ python3 -m pip install piper-tts[http]
 Загрузите голос, например:
 
 ``` sh
-python3 -m piper.download_voices en_US-lessac-medium
+python3 -m piper.download_voices ru_RU-ruslan-medium
 ```
 
 Запустите веб-сервер:
 
 ``` sh
-python3 -m piper.http_server -m en_US-lessac-medium
+python3 -m piper.http_server -m ru_RU-ruslan-medium
 ```
 
 Это запустит HTTP-сервер на порту 5000 (для изменения настроек используйте `--host` и `--port`).
