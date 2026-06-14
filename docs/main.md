@@ -19,3 +19,29 @@ chown -R asterisk:asterisk /var/lib/asterisk/agi-bin/
 
 chmod +x /var/lib/asterisk/agi-bin/*
 ```
+
+### 4. Запустите Telegram бота в docker контейнере.
+
+Все исходные файлы бота находятся в репозитории в папке telegram-bot-v2. Для сборки и запуска контейнера выполните следующие шаги:
+
+Склонируйте репозиторий (если вы не сделали этого ранее) и перейдите в целевую директорию:
+
+```bash
+git clone https://github.com/DesolateSoul/alt-ATE-asterisk.git
+
+cd alt-ATE-asterisk/telegram-bot-v2
+```
+
+Перед запуском обязательно настройте переменные окружения (токен бота, параметры подключения к Asterisk/БД и т.д.) путём создания файла .env:
+
+```bash
+nano .env
+```
+
+Запустите контейнер командой:
+
+```bash
+docker-compose up -d --build
+```
+
+### 5. Запустите
